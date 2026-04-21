@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sign In — OpenCourt</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --surface: #141414;
+    --surface2: #1e1e1e;
+    --border: rgba(255,255,255,0.08);
+    --text: #f0f0f0;
+    --text2: #888;
+    --text3: #555;
+    --accent: #00ff87;
+    --accent-dim: rgba(0,255,135,0.12);
+    --red: #ff4757;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    top: -50%; left: -50%;
+    width: 200%; height: 200%;
+    background: radial-gradient(ellipse 40% 40% at 60% 40%, rgba(0,255,135,0.04) 0%, transparent 60%);
+    pointer-events: none;
+  }
+
+  .card {
+    width: 100%;
+    max-width: 400px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    position: relative;
+    z-index: 1;
+    animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(24px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .card-header {
+    padding: 28px 28px 24px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text3);
+    text-decoration: none;
+    font-size: 13px;
+    margin-bottom: 20px;
+    transition: color 0.15s;
+  }
+
+  .back-link:hover { color: var(--text2); }
+
+  .card-logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 4px;
+  }
+
+  .logo-mark {
+    width: 32px; height: 32px;
+    background: var(--accent);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+  }
+
+  .logo-text {
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: -0.3px;
+  }
+
+  .card-tagline {
+    font-size: 13px;
+    color: var(--text3);
+    font-family: 'DM Mono', monospace;
+  }
+
+  .card-body { padding: 28px; }
+
+  .tabs {
+    display: flex;
+    gap: 0;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 3px;
+    margin-bottom: 24px;
+  }
+
+  .tab-btn {
+    flex: 1;
+    background: none;
+    border: none;
+    color: var(--text3);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .tab-btn.active {
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+
+  .field {
+    margin-bottom: 14px;
+  }
+
+  .field-label {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--text3);
+    font-family: 'DM Mono', monospace;
+    margin-bottom: 6px;
+  }
+
+  .field-input {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 11px 14px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  .field-input:focus { border-color: var(--accent); }
+  .field-input::placeholder { color: var(--text3); }
+
+  .submit-btn {
+    width: 100%;
+    background: var(--accent);
+    color: #000;
+    border: none;
+    border-radius: 8px;
+    padding: 12px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 8px;
+    transition: opacity 0.15s;
+  }
+
+  .submit-btn:hover { opacity: 0.85; }
+  .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .error-msg {
+    background: rgba(255,71,87,0.1);
+    border: 1px solid rgba(255,71,87,0.2);
+    color: var(--red);
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    margin-bottom: 16px;
+    display: none;
+  }
+
+  .success-msg {
+    background: var(--accent-dim);
+    border: 1px solid rgba(0,255,135,0.2);
+    color: var(--accent);
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    margin-bottom: 16px;
+    display: none;
+  }
+
+  /* Hide signup fields by default */
+  #signupFields { display: none; }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <div class="card-header">
+    <a href="/" class="back-link">← Back to map</a>
+    <div class="card-logo">
+      <div class="logo-mark">🎾</div>
+      <span class="logo-text">OpenCourt</span>
+    </div>
+    <div class="card-tagline">find courts · track sessions · compete</div>
+  </div>
+
+  <div class="card-body">
+    <div class="tabs">
+      <button class="tab-btn active" id="signinTab" onclick="switchTab('signin')">Sign in</button>
+      <button class="tab-btn" id="signupTab" onclick="switchTab('signup')">Create account</button>
+    </div>
+
+    <div class="error-msg" id="errorMsg"></div>
+    <div class="success-msg" id="successMsg"></div>
+
+    <!-- Shared fields -->
+    <div class="field">
+      <label class="field-label">Email</label>
+      <input id="email" class="field-input" type="email" placeholder="you@example.com">
+    </div>
+
+    <!-- Signup only -->
+    <div id="signupFields">
+      <div class="field">
+        <label class="field-label">Username</label>
+        <input id="username" class="field-input" type="text" placeholder="courtking23">
+      </div>
+    </div>
+
+    <div class="field">
+      <label class="field-label">Password</label>
+      <input id="password" class="field-input" type="password" placeholder="••••••••"
+        onkeydown="if(event.key==='Enter') handleSubmit()">
+    </div>
+
+    <!-- Verification code (shown after signup) -->
+    <div class="field" id="verifyField" style="display:none">
+      <label class="field-label">Verification code</label>
+      <input id="verifyCode" class="field-input" type="text" placeholder="123456">
+    </div>
+
+    <button class="submit-btn" id="submitBtn" onclick="handleSubmit()">Sign in</button>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/amazon-cognito-identity-js@6.3.6/dist/amazon-cognito-identity.min.js"></script>
+<script>
+const POOL_DATA = {
+  UserPoolId: window.COGNITO_USER_POOL_ID || 'REPLACE_AFTER_APPLY',
+  ClientId:   window.COGNITO_CLIENT_ID || 'REPLACE_AFTER_APPLY',
+};
+
+const userPool = new AmazonCognitoIdentity.CognitoUserPool(POOL_DATA);
+let mode = 'signin'; // signin | signup | verify
+let pendingUser = null;
+
+function switchTab(tab) {
+  mode = tab;
+  document.getElementById('signinTab').classList.toggle('active', tab === 'signin');
+  document.getElementById('signupTab').classList.toggle('active', tab === 'signup');
+  document.getElementById('signupFields').style.display = tab === 'signup' ? 'block' : 'none';
+  document.getElementById('submitBtn').textContent = tab === 'signin' ? 'Sign in' : 'Create account';
+  document.getElementById('verifyField').style.display = 'none';
+  clearMessages();
+}
+
+function showError(msg) {
+  const el = document.getElementById('errorMsg');
+  el.textContent = msg;
+  el.style.display = 'block';
+  document.getElementById('successMsg').style.display = 'none';
+}
+
+function showSuccess(msg) {
+  const el = document.getElementById('successMsg');
+  el.textContent = msg;
+  el.style.display = 'block';
+  document.getElementById('errorMsg').style.display = 'none';
+}
+
+function clearMessages() {
+  document.getElementById('errorMsg').style.display = 'none';
+  document.getElementById('successMsg').style.display = 'none';
+}
+
+function handleSubmit() {
+  if (mode === 'signin') signIn();
+  else if (mode === 'signup') signUp();
+  else if (mode === 'verify') verify();
+}
+
+function signIn() {
+  const email = document.getElementById('email').value;
+  const password = document.getElementById('password').value;
+
+  const authDetails = new AmazonCognitoIdentity.AuthenticationDetails({
+    Username: email, Password: password
+  });
+
+  const cognitoUser = new AmazonCognitoIdentity.CognitoUser({
+    Username: email, Pool: userPool
+  });
+
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  btn.textContent = 'Signing in...';
+
+  cognitoUser.authenticateUser(authDetails, {
+    onSuccess: () => { window.location.href = '/'; },
+    onFailure: (err) => {
+      showError(err.message);
+      btn.disabled = false;
+      btn.textContent = 'Sign in';
+    }
+  });
+}
+
+function signUp() {
+  const email = document.getElementById('email').value;
+  const username = document.getElementById('username').value;
+  const password = document.getElementById('password').value;
+
+  const attributeList = [
+    new AmazonCognitoIdentity.CognitoUserAttribute({ Name: 'email', Value: email })
+  ];
+
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  btn.textContent = 'Creating account...';
+
+  userPool.signUp(email, password, attributeList, null, (err, result) => {
+    if (err) {
+      showError(err.message);
+      btn.disabled = false;
+      btn.textContent = 'Create account';
+      return;
+    }
+
+    pendingUser = result.user;
+    mode = 'verify';
+    document.getElementById('verifyField').style.display = 'block';
+    document.getElementById('submitBtn').textContent = 'Verify email';
+    document.getElementById('submitBtn').disabled = false;
+    showSuccess('Check your email for a verification code.');
+  });
+}
+
+function verify() {
+  const code = document.getElementById('verifyCode').value;
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  btn.textContent = 'Verifying...';
+
+  pendingUser.confirmRegistration(code, true, (err) => {
+    if (err) {
+      showError(err.message);
+      btn.disabled = false;
+      btn.textContent = 'Verify email';
+      return;
+    }
+    showSuccess('Email verified! Signing you in...');
+    // Auto sign in after verification
+    setTimeout(() => {
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      mode = 'signin';
+      document.getElementById('password').value = password;
+      signIn();
+    }, 1000);
+  });
+}
+
+// Auto-redirect if already logged in
+window.onload = function() {
+  const user = userPool.getCurrentUser();
+  if (user) {
+    user.getSession((err, session) => {
+      if (!err && session.isValid()) window.location.href = '/';
+    });
+  }
+};
+</script>
+</body>
+</html>

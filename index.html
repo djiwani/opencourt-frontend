@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OpenCourt — Find a Court</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --surface: #141414;
+    --surface2: #1e1e1e;
+    --border: rgba(255,255,255,0.08);
+    --text: #f0f0f0;
+    --text2: #888;
+    --text3: #555;
+    --accent: #00ff87;
+    --accent-dim: rgba(0,255,135,0.12);
+    --red: #ff4757;
+    --red-dim: rgba(255,71,87,0.12);
+    --amber: #ffa502;
+    --panel-w: 380px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* ── MAP ── */
+  #map {
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+  }
+
+  /* Make Leaflet tiles dark */
+  .leaflet-tile { filter: brightness(0.7) saturate(0.6) hue-rotate(185deg); }
+
+  /* ── TOP BAR ── */
+  .topbar {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    background: rgba(10,10,10,0.85);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+  }
+
+  .logo-mark {
+    width: 28px; height: 28px;
+    background: var(--accent);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+  }
+
+  .logo-text {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text);
+    letter-spacing: -0.3px;
+  }
+
+  .topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .sport-filter {
+    display: flex;
+    gap: 4px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 4px;
+  }
+
+  .sport-btn {
+    background: none;
+    border: none;
+    color: var(--text2);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    padding: 5px 12px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+
+  .sport-btn.active {
+    background: var(--accent-dim);
+    color: var(--accent);
+  }
+
+  .sport-btn:hover:not(.active) { color: var(--text); }
+
+  .signin-btn {
+    background: var(--accent);
+    color: #000;
+    border: none;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 8px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: opacity 0.15s;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+  }
+
+  .signin-btn:hover { opacity: 0.85; }
+
+  .user-pill {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 12px;
+    cursor: pointer;
+    transition: border-color 0.15s;
+  }
+
+  .user-pill:hover { border-color: rgba(255,255,255,0.2); }
+
+  .user-avatar {
+    width: 22px; height: 22px;
+    background: var(--accent);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 600;
+    color: #000;
+  }
+
+  .user-name {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+  }
+
+  /* ── LOCATE BTN ── */
+  .locate-btn {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 100;
+    width: 48px; height: 48px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-size: 20px;
+  }
+
+  .locate-btn:hover {
+    background: var(--surface2);
+    border-color: rgba(255,255,255,0.2);
+    transform: translateY(-1px);
+  }
+
+  /* ── COURT PANEL ── */
+  .court-panel {
+    position: fixed;
+    top: 60px;
+    right: 0;
+    bottom: 0;
+    width: var(--panel-w);
+    z-index: 50;
+    background: var(--surface);
+    border-left: 1px solid var(--border);
+    transform: translateX(100%);
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .court-panel.open { transform: translateX(0); }
+
+  .panel-header {
+    padding: 20px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .panel-close {
+    position: absolute;
+    top: 16px; right: 16px;
+    background: var(--surface2);
+    border: none;
+    color: var(--text2);
+    width: 28px; height: 28px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.15s;
+  }
+
+  .panel-close:hover { color: var(--text); }
+
+  .panel-sport-badge {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 6px;
+    font-family: 'DM Mono', monospace;
+  }
+
+  .panel-name {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 4px;
+    line-height: 1.2;
+    padding-right: 32px;
+  }
+
+  .panel-address {
+    font-size: 13px;
+    color: var(--text2);
+    margin-bottom: 16px;
+  }
+
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+  }
+
+  .status-badge.available {
+    background: var(--accent-dim);
+    color: var(--accent);
+  }
+
+  .status-badge.in_use {
+    background: var(--red-dim);
+    color: var(--red);
+  }
+
+  .status-badge.unknown {
+    background: rgba(255,255,255,0.06);
+    color: var(--text2);
+  }
+
+  .status-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+
+  .panel-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+  }
+
+  .detail-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .detail-row:last-child { border-bottom: none; }
+
+  .detail-label {
+    font-size: 12px;
+    color: var(--text3);
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 0.5px;
+  }
+
+  .detail-value {
+    font-size: 13px;
+    color: var(--text);
+    font-weight: 500;
+  }
+
+  .panel-actions {
+    padding: 16px 20px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  .action-btn {
+    width: 100%;
+    padding: 12px;
+    border-radius: 8px;
+    border: none;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .action-btn.primary {
+    background: var(--accent);
+    color: #000;
+  }
+
+  .action-btn.primary:hover { opacity: 0.85; }
+
+  .action-btn.secondary {
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+
+  .action-btn.secondary:hover { border-color: rgba(255,255,255,0.2); }
+
+  .action-btn.danger {
+    background: var(--red-dim);
+    color: var(--red);
+    border: 1px solid rgba(255,71,87,0.2);
+  }
+
+  .action-btn.danger:hover { background: rgba(255,71,87,0.2); }
+
+  /* ── PROFILE PANEL ── */
+  .profile-panel {
+    position: fixed;
+    top: 60px;
+    right: 0;
+    bottom: 0;
+    width: var(--panel-w);
+    z-index: 50;
+    background: var(--surface);
+    border-left: 1px solid var(--border);
+    transform: translateX(100%);
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    overflow-y: auto;
+  }
+
+  .profile-panel.open { transform: translateX(0); }
+
+  .profile-header {
+    padding: 24px 20px 16px;
+    border-bottom: 1px solid var(--border);
+    position: relative;
+  }
+
+  .profile-avatar {
+    width: 52px; height: 52px;
+    background: var(--accent);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    font-weight: 600;
+    color: #000;
+    margin-bottom: 12px;
+  }
+
+  .profile-username {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 2px;
+  }
+
+  .profile-since {
+    font-size: 12px;
+    color: var(--text3);
+    font-family: 'DM Mono', monospace;
+  }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1px;
+    background: var(--border);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .stat-cell {
+    background: var(--surface);
+    padding: 16px;
+    text-align: center;
+  }
+
+  .stat-num {
+    font-size: 24px;
+    font-weight: 600;
+    color: var(--accent);
+    font-family: 'DM Mono', monospace;
+    display: block;
+    margin-bottom: 2px;
+  }
+
+  .stat-lbl {
+    font-size: 11px;
+    color: var(--text3);
+    letter-spacing: 0.5px;
+  }
+
+  .badges-section {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .section-title {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text3);
+    font-family: 'DM Mono', monospace;
+    margin-bottom: 12px;
+  }
+
+  .badges-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .badge-chip {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 12px;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .profile-actions {
+    padding: 16px 20px;
+  }
+
+  /* ── TOAST ── */
+  .toast {
+    position: fixed;
+    bottom: 80px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    z-index: 200;
+    opacity: 0;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+
+  .toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  .toast.success { border-color: rgba(0,255,135,0.3); color: var(--accent); }
+  .toast.error { border-color: rgba(255,71,87,0.3); color: var(--red); }
+
+  /* ── CUSTOM MARKERS ── */
+  .court-marker {
+    width: 32px; height: 32px;
+    border-radius: 50% 50% 50% 0;
+    transform: rotate(-45deg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid rgba(0,0,0,0.3);
+    cursor: pointer;
+    transition: transform 0.15s;
+  }
+
+  .court-marker span {
+    transform: rotate(45deg);
+    font-size: 13px;
+  }
+
+  .court-marker.available { background: var(--accent); }
+  .court-marker.in_use { background: var(--red); }
+  .court-marker.unknown { background: #555; }
+
+  /* ── LEAFLET OVERRIDES ── */
+  .leaflet-control-zoom {
+    border: 1px solid var(--border) !important;
+    border-radius: 8px !important;
+    overflow: hidden;
+    margin-top: 70px !important;
+  }
+
+  .leaflet-control-zoom a {
+    background: var(--surface) !important;
+    color: var(--text2) !important;
+    border-bottom: 1px solid var(--border) !important;
+    width: 32px !important;
+    height: 32px !important;
+    line-height: 32px !important;
+    font-size: 16px !important;
+  }
+
+  .leaflet-control-zoom a:hover {
+    background: var(--surface2) !important;
+    color: var(--text) !important;
+  }
+
+  .leaflet-control-attribution {
+    background: rgba(10,10,10,0.7) !important;
+    color: var(--text3) !important;
+    font-size: 10px !important;
+  }
+
+  .leaflet-control-attribution a { color: var(--text3) !important; }
+
+  @media (max-width: 640px) {
+    :root { --panel-w: 100vw; }
+    .sport-filter { display: none; }
+    .court-panel, .profile-panel { top: 60px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <a href="/" class="logo">
+    <div class="logo-mark">🎾</div>
+    <span class="logo-text">OpenCourt</span>
+  </a>
+
+  <div class="topbar-right">
+    <div class="sport-filter">
+      <button class="sport-btn active" data-sport="">All</button>
+      <button class="sport-btn" data-sport="tennis">Tennis</button>
+      <button class="sport-btn" data-sport="basketball">Basketball</button>
+      <button class="sport-btn" data-sport="pickleball">Pickleball</button>
+    </div>
+
+    <div id="authArea">
+      <a href="login.html" class="signin-btn">Sign in</a>
+    </div>
+  </div>
+</div>
+
+<!-- MAP -->
+<div id="map"></div>
+
+<!-- LOCATE BUTTON -->
+<button class="locate-btn" onclick="locateUser()" title="Find my location">📍</button>
+
+<!-- COURT DETAIL PANEL -->
+<div class="court-panel" id="courtPanel">
+  <div class="panel-header">
+    <button class="panel-close" onclick="closePanel()">✕</button>
+    <div class="panel-sport-badge" id="panelSport">—</div>
+    <div class="panel-name" id="panelName">—</div>
+    <div class="panel-address" id="panelAddress">—</div>
+    <span class="status-badge unknown" id="panelStatus">
+      <span class="status-dot"></span>
+      Unknown
+    </span>
+  </div>
+
+  <div class="panel-body">
+    <div class="detail-row">
+      <span class="detail-label">Surface</span>
+      <span class="detail-value" id="detailSurface">—</span>
+    </div>
+    <div class="detail-row">
+      <span class="detail-label">Courts</span>
+      <span class="detail-value" id="detailCourts">—</span>
+    </div>
+    <div class="detail-row">
+      <span class="detail-label">Lights</span>
+      <span class="detail-value" id="detailLights">—</span>
+    </div>
+    <div class="detail-row">
+      <span class="detail-label">Reservable</span>
+      <span class="detail-value" id="detailReservable">—</span>
+    </div>
+    <div class="detail-row">
+      <span class="detail-label">Status updated</span>
+      <span class="detail-value" id="detailUpdated">—</span>
+    </div>
+  </div>
+
+  <div class="panel-actions" id="panelActions">
+    <!-- Populated by JS based on auth state and current status -->
+  </div>
+</div>
+
+<!-- PROFILE PANEL -->
+<div class="profile-panel" id="profilePanel">
+  <div class="profile-header">
+    <button class="panel-close" onclick="closeProfile()">✕</button>
+    <div class="profile-avatar" id="profileAvatar">—</div>
+    <div class="profile-username" id="profileUsername">—</div>
+    <div class="profile-since" id="profileSince">—</div>
+  </div>
+
+  <div class="stats-grid">
+    <div class="stat-cell">
+      <span class="stat-num" id="statCourts">0</span>
+      <span class="stat-lbl">Courts visited</span>
+    </div>
+    <div class="stat-cell">
+      <span class="stat-num" id="statHours">0</span>
+      <span class="stat-lbl">Hours played</span>
+    </div>
+    <div class="stat-cell">
+      <span class="stat-num" id="statStreak">0</span>
+      <span class="stat-lbl">Day streak</span>
+    </div>
+    <div class="stat-cell">
+      <span class="stat-num" id="statCheckins">0</span>
+      <span class="stat-lbl">Total check-ins</span>
+    </div>
+  </div>
+
+  <div class="badges-section">
+    <div class="section-title">Badges</div>
+    <div class="badges-grid" id="badgesGrid">
+      <span style="font-size:13px;color:var(--text3)">No badges yet — get out and play!</span>
+    </div>
+  </div>
+
+  <div class="profile-actions">
+    <button class="action-btn secondary" onclick="signOut()">Sign out</button>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/amazon-cognito-identity-js@6.3.6/dist/amazon-cognito-identity.min.js"></script>
+<script src="script.js"></script>
+</body>
+</html>
