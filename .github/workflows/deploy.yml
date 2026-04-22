@@ -1,0 +1,129 @@
+name: Deploy Frontend
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  AWS_REGION: us-east-1
+  S3_BUCKET: opencourt-frontend
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # Pull config values from SSM Parameter Store
+      # These are set by terraform apply — avoids hardcoding Cognito IDs in code
+      - name: Get config from SSM
+        id: ssm
+        run: |
+          API_URL=$(aws ssm get-parameter \
+            --name "/opencourt/frontend/api_url" \
+            --query "Parameter.Value" \
+            --output text)
+
+          USER_POOL_ID=$(aws ssm get-parameter \
+            --name "/opencourt/frontend/cognito_user_pool_id" \
+            --query "Parameter.Value" \
+            --output text)
+
+          CLIENT_ID=$(aws ssm get-parameter \
+            --name "/opencourt/frontend/cognito_client_id" \
+            --query "Parameter.Value" \
+            --output text)
+
+          IDENTITY_POOL_ID=$(aws ssm get-parameter \
+            --name "/opencourt/frontend/cognito_identity_pool_id" \
+            --query "Parameter.Value" \
+            --output text)
+
+          echo "api_url=$API_URL" >> $GITHUB_OUTPUT
+          echo "user_pool_id=$USER_POOL_ID" >> $GITHUB_OUTPUT
+          echo "client_id=$CLIENT_ID" >> $GITHUB_OUTPUT
+          echo "identity_pool_id=$IDENTITY_POOL_ID" >> $GITHUB_OUTPUT
+
+      # Inject config into a script tag before the closing </head> in index.html
+      # This sets window.* variables that script.js reads at runtime
+      - name: Inject config into index.html
+        env:
+          API_URL: ${{ steps.ssm.outputs.api_url }}
+          USER_POOL_ID: ${{ steps.ssm.outputs.user_pool_id }}
+          CLIENT_ID: ${{ steps.ssm.outputs.client_id }}
+          IDENTITY_POOL_ID: ${{ steps.ssm.outputs.identity_pool_id }}
+        run: |
+          python3 - <<'EOF'
+          import os
+          with open('index.html', 'r') as f:
+              content = f.read()
+          script = f"""<script>
+          window.API_URL = '{os.environ["API_URL"]}';
+          window.COGNITO_USER_POOL_ID = '{os.environ["USER_POOL_ID"]}';
+          window.COGNITO_CLIENT_ID = '{os.environ["CLIENT_ID"]}';
+          window.COGNITO_IDENTITY_POOL = '{os.environ["IDENTITY_POOL_ID"]}';
+          </script>"""
+          content = content.replace('</head>', script + '</head>', 1)
+          with open('index.html', 'w') as f:
+              f.write(content)
+          print('Injected config into index.html')
+          EOF
+
+      - name: Inject config into login.html
+        env:
+          USER_POOL_ID: ${{ steps.ssm.outputs.user_pool_id }}
+          CLIENT_ID: ${{ steps.ssm.outputs.client_id }}
+        run: |
+          python3 - <<'EOF'
+          import os
+          with open('login.html', 'r') as f:
+              content = f.read()
+          script = f"""<script>
+          window.COGNITO_USER_POOL_ID = '{os.environ["USER_POOL_ID"]}';
+          window.COGNITO_CLIENT_ID = '{os.environ["CLIENT_ID"]}';
+          </script>"""
+          content = content.replace('</head>', script + '</head>', 1)
+          with open('login.html', 'w') as f:
+              f.write(content)
+          print('Injected config into login.html')
+          EOF
+
+      - name: Sync to S3
+        run: |
+          aws s3 sync . s3://${{ env.S3_BUCKET }} \
+            --exclude ".git/*" \
+            --exclude ".github/*" \
+            --exclude ".gitignore" \
+            --delete
+
+      - name: Get CloudFront distribution ID
+        id: cloudfront
+        run: |
+          DIST_ID=$(aws ssm get-parameter \
+            --name "/opencourt/frontend/cloudfront_distribution_id" \
+            --query "Parameter.Value" \
+            --output text 2>/dev/null || echo "")
+
+          if [ -z "$DIST_ID" ]; then
+            DIST_ID=$(aws cloudfront list-distributions \
+              --query "DistributionList.Items[?contains(Aliases.Items, 'opencourt.fourallthedogs.com')].Id" \
+              --output text)
+          fi
+
+          echo "distribution_id=$DIST_ID" >> $GITHUB_OUTPUT
+
+      - name: Invalidate CloudFront cache
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id ${{ steps.cloudfront.outputs.distribution_id }} \
+            --paths "/*"
