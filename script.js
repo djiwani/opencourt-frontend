@@ -393,7 +393,7 @@ async function init() {
   if (session) {
     // Get user info from token
     const payload = session.getAccessToken().decodePayload();
-    currentUser = { username: payload['cognito:username'] || payload.email };
+    currentUser = { username: payload.username || payload['cognito:username'] || payload.email };
 
     // Update auth area to show user pill
     document.getElementById('authArea').innerHTML = `
