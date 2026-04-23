@@ -29,7 +29,7 @@ function getSession() {
 
     cognitoUser.getSession((err, session) => {
       if (err || !session.isValid()) return resolve(null);
-      idToken = session.getIdToken().getJwtToken();
+      idToken = session.getAccessToken().getJwtToken();
       resolve(session);
     });
   });
@@ -392,7 +392,7 @@ async function init() {
 
   if (session) {
     // Get user info from token
-    const payload = session.getIdToken().decodePayload();
+    const payload = session.getAccessToken().decodePayload();
     currentUser = { username: payload['cognito:username'] || payload.email };
 
     // Update auth area to show user pill
