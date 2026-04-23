@@ -365,12 +365,14 @@ function locateUser() {
     return;
   }
 
+  showToast('Finding your location...', '');
   navigator.geolocation.getCurrentPosition(
     (pos) => {
       map.setView([pos.coords.latitude, pos.coords.longitude], 15);
       loadCourts();
     },
-    () => showToast('Could not get location', 'error')
+    () => showToast('Could not get location', 'error'),
+    { timeout: 8000, enableHighAccuracy: false }
   );
 }
 
