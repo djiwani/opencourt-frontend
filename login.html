@@ -242,12 +242,17 @@
     </div>
 
     <!-- Signup only -->
-    <div id="signupFields">
-      <div class="field">
-        <label class="field-label">Username</label>
-        <input id="username" class="field-input" type="text" placeholder="courtking23">
-      </div>
-    </div>
+    <!-- Signup only -->
+	<div id="signupFields">
+	  <div class="field">
+		<label class="field-label">Full Name</label>
+		<input id="fullName" class="field-input" type="text" placeholder="Alex Johnson">
+	  </div>
+	  <div class="field">
+		<label class="field-label">Username</label>
+		<input id="username" class="field-input" type="text" placeholder="courtking23">
+	  </div>
+	</div>
 
     <div class="field">
       <label class="field-label">Password</label>
@@ -339,11 +344,18 @@ function signIn() {
 
 function signUp() {
   const email = document.getElementById('email').value;
+  const fullName = document.getElementById('fullName').value.trim();
   const username = document.getElementById('username').value;
   const password = document.getElementById('password').value;
 
+  if (!fullName) {
+    showError('Please enter your full name.');
+    return;
+  }
+
   const attributeList = [
-    new AmazonCognitoIdentity.CognitoUserAttribute({ Name: 'email', Value: email })
+    new AmazonCognitoIdentity.CognitoUserAttribute({ Name: 'email', Value: email }),
+    new AmazonCognitoIdentity.CognitoUserAttribute({ Name: 'name', Value: fullName }),
   ];
 
   const btn = document.getElementById('submitBtn');
@@ -357,6 +369,9 @@ function signUp() {
       btn.textContent = 'Create account';
       return;
     }
+
+    // Store full name to save to DB after verification
+    localStorage.setItem('pendingFullName', fullName);
 
     pendingUser = result.user;
     mode = 'verify';

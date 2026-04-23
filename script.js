@@ -314,9 +314,9 @@ async function openProfile() {
 
     const { user, stats, badges } = await response.json();
 
-    const initial = (user.username || '?').charAt(0).toUpperCase();
-    document.getElementById('profileAvatar').textContent = initial;
-    document.getElementById('profileUsername').textContent = user.username;
+    const displayName = user.full_name || user.username;
+    document.getElementById('profileAvatar').textContent = displayName.charAt(0).toUpperCase();
+    document.getElementById('profileUsername').textContent = displayName;
     document.getElementById('profileSince').textContent =
       'Joined ' + new Date(user.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 
@@ -391,15 +391,45 @@ async function init() {
   const session = await getSession();
 
   if (session) {
-    // Get user info from token
-    const payload = session.getAccessToken().decodePayload();
-    currentUser = { username: payload.username || payload['cognito:username'] || payload.email };
+    // Save full_name to API if coming from fresh signup
+    const pendingFullName = localStorage.getItem('pendingFullName');
+    if (pendingFullName) {
+      try {
+        await fetch(`${CONFIG.API_URL}/users/me`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${idToken}`
+          },
+          body: JSON.stringify({ full_name: pendingFullName })
+        });
+      } catch (err) {
+        console.error('Failed to save full name:', err.message);
+      }
+      localStorage.removeItem('pendingFullName');
+    }
+
+    // Fetch profile to get full_name for display
+    try {
+      const profileRes = await fetch(`${CONFIG.API_URL}/users/me`, {
+        headers: { 'Authorization': `Bearer ${idToken}` }
+      });
+      if (profileRes.ok) {
+        const { user } = await profileRes.json();
+        currentUser = { username: user.username, fullName: user.full_name };
+      }
+    } catch (err) {
+      const payload = session.getAccessToken().decodePayload();
+      currentUser = { username: payload.username || payload['cognito:username'] };
+    }
+
+    const displayName = currentUser.fullName || currentUser.username;
 
     // Update auth area to show user pill
     document.getElementById('authArea').innerHTML = `
       <div class="user-pill" onclick="openProfile()">
-        <div class="user-avatar">${currentUser.username.charAt(0).toUpperCase()}</div>
-        <span class="user-name">${currentUser.username}</span>
+        <div class="user-avatar">${displayName.charAt(0).toUpperCase()}</div>
+        <span class="user-name">${displayName}</span>
       </div>
     `;
 
