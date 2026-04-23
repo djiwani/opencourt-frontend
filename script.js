@@ -391,25 +391,7 @@ async function init() {
   const session = await getSession();
 
   if (session) {
-    // Save full_name to API if coming from fresh signup
-    const pendingFullName = localStorage.getItem('pendingFullName');
-    if (pendingFullName) {
-      try {
-        await fetch(`${CONFIG.API_URL}/users/me`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${idToken}`
-          },
-          body: JSON.stringify({ full_name: pendingFullName })
-        });
-      } catch (err) {
-        console.error('Failed to save full name:', err.message);
-      }
-      localStorage.removeItem('pendingFullName');
-    }
-
-    // Fetch profile to get full_name for display
+    // Fetch profile first — this creates the user row if it doesn't exist
     try {
       const profileRes = await fetch(`${CONFIG.API_URL}/users/me`, {
         headers: { 'Authorization': `Bearer ${idToken}` }
@@ -423,9 +405,30 @@ async function init() {
       currentUser = { username: payload.username || payload['cognito:username'] };
     }
 
+    // Now save full_name if coming from fresh signup — user row exists now
+    const pendingFullName = localStorage.getItem('pendingFullName');
+    if (pendingFullName && idToken) {
+      try {
+        const putRes = await fetch(`${CONFIG.API_URL}/users/me`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${idToken}`
+          },
+          body: JSON.stringify({ full_name: pendingFullName })
+        });
+        if (putRes.ok) {
+          const { user } = await putRes.json();
+          currentUser.fullName = user.full_name;
+        }
+      } catch (err) {
+        console.error('Failed to save full name:', err.message);
+      }
+      localStorage.removeItem('pendingFullName');
+    }
+
     const displayName = currentUser.fullName || currentUser.username;
 
-    // Update auth area to show user pill
     document.getElementById('authArea').innerHTML = `
       <div class="user-pill" onclick="openProfile()">
         <div class="user-avatar">${displayName.charAt(0).toUpperCase()}</div>
