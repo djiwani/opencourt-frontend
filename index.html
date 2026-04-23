@@ -565,6 +565,19 @@
     .court-panel, .profile-panel { top: 60px; }
   }
 </style>
+
+$content = Get-Content "C:\Users\danie\Desktop\aws projects\opencourt-frontend\index.html" -Raw
+$inject = @"
+<script>
+  window.COGNITO_USER_POOL_ID  = 'us-east-1_EDgjCSYnn';
+  window.COGNITO_CLIENT_ID     = '5drbidl21o0qkv5r52fq7r3b41';
+  window.COGNITO_IDENTITY_POOL = 'us-east-1:854b7400-40e3-4c34-be36-b7054d65e673';
+  window.API_URL               = 'https://api.opencourt.fourallthedogs.com';
+</script>
+"@
+$content = $content -replace '</head>', "$inject</head>"
+$content | Set-Content "C:\Users\danie\Desktop\aws projects\opencourt-frontend\index.html" -Encoding utf8
+
 </head>
 <body>
 
