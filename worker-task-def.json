@@ -1,0 +1,73 @@
+{
+    "family": "opencourt-worker",
+    "taskRoleArn": "arn:aws:iam::856888988892:role/opencourt-ecs-task",
+    "executionRoleArn": "arn:aws:iam::856888988892:role/opencourt-ecs-task-execution",
+    "networkMode": "awsvpc",
+    "containerDefinitions": [
+        {
+            "name": "worker",
+            "image": "856888988892.dkr.ecr.us-east-1.amazonaws.com/opencourt-worker:latest",
+            "cpu": 0,
+            "portMappings": [],
+            "essential": true,
+            "environment": [
+                {
+                    "name": "NODE_ENV",
+                    "value": "production"
+                },
+                {
+                    "name": "SQS_QUEUE_URL",
+                    "value": "https://sqs.us-east-1.amazonaws.com/856888988892/opencourt-checkin-events"
+                },
+                {
+                    "name": "DB_SECRET_ARN",
+                    "value": "arn:aws:secretsmanager:us-east-1:856888988892:secret:opencourt/db-credentials-iGvxaW"
+                },
+                {
+                    "name": "USER_NOTIFICATIONS_TOPIC_ARN",
+                    "value": "arn:aws:sns:us-east-1:856888988892:opencourt-user-notifications"
+                }
+            ],
+            "mountPoints": [],
+            "volumesFrom": [],
+            "secrets": [
+                {
+                    "name": "DB_USERNAME",
+                    "valueFrom": "arn:aws:secretsmanager:us-east-1:856888988892:secret:opencourt/db-credentials-iGvxaW:username::"
+                },
+                {
+                    "name": "DB_PASSWORD",
+                    "valueFrom": "arn:aws:secretsmanager:us-east-1:856888988892:secret:opencourt/db-credentials-iGvxaW:password::"
+                },
+                {
+                    "name": "DB_HOST",
+                    "valueFrom": "arn:aws:secretsmanager:us-east-1:856888988892:secret:opencourt/db-credentials-iGvxaW:host::"
+                },
+                {
+                    "name": "DB_PORT",
+                    "valueFrom": "arn:aws:secretsmanager:us-east-1:856888988892:secret:opencourt/db-credentials-iGvxaW:port::"
+                },
+                {
+                    "name": "DB_NAME",
+                    "valueFrom": "arn:aws:secretsmanager:us-east-1:856888988892:secret:opencourt/db-credentials-iGvxaW:dbname::"
+                }
+            ],
+            "logConfiguration": {
+                "logDriver": "awslogs",
+                "options": {
+                    "awslogs-group": "/ecs/opencourt-worker",
+                    "awslogs-region": "us-east-1",
+                    "awslogs-stream-prefix": "worker"
+                }
+            },
+            "systemControls": []
+        }
+    ],
+    "volumes": [],
+    "placementConstraints": [],
+    "requiresCompatibilities": [
+        "FARGATE"
+    ],
+    "cpu": "256",
+    "memory": "1024"
+}
